@@ -76,237 +76,6 @@ Analyzes network traffic (PCAP files) and detects:
 - ✅ Error handling & validation
 - ✅ Statistical analysis
 
-### Frontend Options
-
-#### 1. **Web Interface** (No Installation)
-- Beautiful, responsive UI
-- Drag-and-drop file upload
-- Real-time results display
-- Threat visualization
-- Just open `test_frontend.html` in your browser
-
-#### 2. **React Component**
-- Ready-to-use component
-- TypeScript support
-- Tailwind CSS styling
-- See: `frontend_examples/AnalyzePackets.jsx`
-
-#### 3. **Next.js Integration**
-- Server-side rendering
-- API routes
-- Deployment ready
-- See: `frontend_examples/nextjs_example.js`
-
-#### 4. **Command-Line**
-- Python scripts
-- Batch processing
-- See: `test_pcap.py`
-
----
-
-## 📁 Project Structure
-
-```
-ml/
-├── 🚀 api.py                      # Main Flask API server
-├── 🌐 test_frontend.html          # Web UI (open in browser!)
-├── 🤖 lightgbm_model.pkl          # ML model (pre-trained)
-│
-├── 📚 Documentation
-│   ├── SETUP_GUIDE.md             # Complete setup guide
-│   ├── API_README.md              # API documentation
-│   └── README.md                  # This file
-│
-├── 🧪 Testing Files
-│   ├── test_pcap.py               # CLI PCAP analyzer
-│   ├── test_api.py                # API endpoint tester
-│   └── test_arp_attack.py         # Attack simulation test
-│
-├── 🎨 Frontend Examples
-│   ├── AnalyzePackets.jsx         # React component
-│   └── nextjs_example.js          # Next.js page
-│
-├── 📦 Dependencies
-│   ├── requirements.txt            # Python packages
-│   └── start_api.bat              # Quick launcher (Windows)
-│
-├── 📊 Sample Data
-│   ├── 2024-07-30-traffic-analysis-exercise.pcap  # Normal traffic
-│   ├── realistic_mixed_attacks.pcap               # Mixed traffic
-│   └── attack_samples/
-│       └── arp_attack.pcap        # Attack sample
-│
-└── 📁 uploads/                    # Uploaded files storage
-```
-
----
-
-## 🚀 Usage
-
-### Option 1: Web Interface (Easiest!)
-
-1. **Start the API:**
-   ```bash
-   python api.py
-   ```
-
-2. **Open the web interface:**
-   - Double-click `test_frontend.html`
-   - Or open in browser: `file:///path/to/test_frontend.html`
-
-3. **Upload and analyze:**
-   - Click "Choose PCAP File"
-   - Select a `.pcap` file
-   - Click "Analyze Network Traffic"
-   - View results!
-
-### Option 2: Command-Line
-
-```bash
-# Analyze a PCAP file
-python test_pcap.py
-
-# Test the API
-python test_api.py
-```
-
-### Option 3: API with cURL
-
-```bash
-# Health check
-curl http://localhost:5000/health
-
-# Analyze file
-curl -X POST -F "file=@traffic.pcap" \
-  http://localhost:5000/analyze-quick
-
-# Get stats
-curl http://localhost:5000/stats
-```
-
-### Option 4: React/Next.js App
-
-See `frontend_examples/` for complete implementations.
-
----
-
-## 🔌 API Endpoints
-
-### `/` (GET)
-API information and available endpoints.
-
-### `/health` (GET)
-Health check - verify API is running.
-
-**Response:**
-```json
-{
-  "status": "healthy",
-  "model_loaded": true,
-  "timestamp": "2025-12-10T12:34:56"
-}
-```
-
-### `/analyze-quick` (POST)
-**Upload and analyze PCAP file in one call (recommended).**
-
-**Request:**
-```
-POST /analyze-quick
-Content-Type: multipart/form-data
-file: <PCAP file>
-```
-
-**Response:**
-```json
-{
-  "status": "success",
-  "total_packets": 11562,
-  "results": {
-    "Normal": 11562,
-    "DDoS": 0,
-    "Port Scan": 0,
-    "SQL Injection": 0,
-    "Malware": 0
-  },
-  "percentages": {
-    "Normal": 100.0,
-    "DDoS": 0.0,
-    "Port Scan": 0.0,
-    "SQL Injection": 0.0,
-    "Malware": 0.0
-  },
-  "top_threats": [
-    {
-      "packet": 42,
-      "type": "Port Scan",
-      "confidence": 95.32,
-      "summary": "Ether / IP / TCP 192.168.1.100:56234 > ..."
-    }
-  ],
-  "timestamp": "2025-12-10T12:34:56"
-}
-```
-
-### `/upload` (POST)
-Upload PCAP file (use with `/analyze` endpoint).
-
-### `/analyze` (POST)
-Analyze previously uploaded file.
-
-### `/stats` (GET)
-Get server statistics and file list.
-
----
-
-## 💻 Frontend Integration
-
-### React
-```javascript
-import axios from 'axios';
-
-async function analyzeFile(file) {
-  const formData = new FormData();
-  formData.append('file', file);
-  
-  const response = await axios.post(
-    'http://localhost:5000/analyze-quick',
-    formData
-  );
-  
-  return response.data;
-}
-```
-
-### Vue.js
-```javascript
-const analyzeFile = async (file) => {
-  const formData = new FormData();
-  formData.append('file', file);
-  
-  const response = await fetch('http://localhost:5000/analyze-quick', {
-    method: 'POST',
-    body: formData
-  });
-  
-  return await response.json();
-};
-```
-
-### Vanilla JavaScript
-```javascript
-const formData = new FormData();
-formData.append('file', fileInput.files[0]);
-
-fetch('http://localhost:5000/analyze-quick', {
-  method: 'POST',
-  body: formData
-})
-.then(r => r.json())
-.then(data => console.log(data));
-```
-
----
 
 ## 📦 Installation
 
@@ -408,21 +177,6 @@ python test_arp_attack.py
 
 ---
 
-## 📊 Sample PCAP Files
-
-### Included Files
-- `2024-07-30-traffic-analysis-exercise.pcap` - Normal network traffic
-- `realistic_mixed_attacks.pcap` - Mixed normal + attack traffic
-- `attack_samples/arp_attack.pcap` - ARP spoofing attack
-
-### Download More Files
-- **Malware Traffic Analysis**: https://www.malware-traffic-analysis.net/
-- **CICIDS2017 Dataset**: https://www.unb.ca/cic/datasets/ids-2017.html
-- **NETRESEC Captures**: https://www.netresec.com/?page=PCAPs
-- **Wireshark Samples**: https://wiki.wireshark.org/SampleCaptures
-
----
-
 ## 🐛 Troubleshooting
 
 ### Port 5000 Already in Use
@@ -435,27 +189,6 @@ taskkill /PID <PID> /F
 lsof -i :5000
 kill -9 <PID>
 ```
-
-### Model File Not Found
-```bash
-# Make sure lightgbm_model.pkl is in same directory as api.py
-ls lightgbm_model.pkl
-
-# Check current directory
-pwd
-```
-
-### PCAP Upload Fails
-- File must be `.pcap`, `.pcapng`, or `.cap`
-- File size < 50MB
-- File is readable (check permissions)
-
-### API Connection Refused
-- Start API server first: `python api.py`
-- Check port 5000 is open
-- Verify firewall settings
-
----
 
 ## 📈 Performance
 
@@ -484,15 +217,6 @@ heroku create
 git push heroku main
 ```
 
-### AWS EC2
-```bash
-# Install and run
-sudo apt update
-sudo apt install python3 python3-pip
-pip3 install -r requirements.txt
-gunicorn api:app --bind 0.0.0.0:5000
-```
-
 ### Docker
 ```dockerfile
 FROM python:3.9
@@ -502,11 +226,6 @@ RUN pip install -r requirements.txt
 CMD ["gunicorn", "api:app"]
 ```
 
-### Google Cloud Run
-```bash
-gcloud run deploy cyberpulse --source .
-```
-
 ---
 
 ## 📚 Documentation
@@ -514,51 +233,8 @@ gcloud run deploy cyberpulse --source .
 - **API Details**: See `API_README.md`
 - **Setup Guide**: See `SETUP_GUIDE.md`
 - **Examples**: See `frontend_examples/`
-
+  
 ---
-
-## 🎯 Next Steps
-
-1. **Start using it now:**
-   ```bash
-   python api.py
-   ```
-   Then open `test_frontend.html`
-
-2. **Build a custom frontend:**
-   - Use React component from `frontend_examples/`
-   - Integrate with your web app
-
-3. **Deploy to production:**
-   - Follow production setup guide
-   - Use Gunicorn/Nginx
-   - Enable HTTPS
-
-4. **Improve detection:**
-   - Train with more data
-   - Tune ML model parameters
-   - Add more attack types
-
----
-
-## 📞 Support
-
-### Common Issues
-
-**Q: How do I use this with my React app?**
-A: Copy the code from `frontend_examples/AnalyzePackets.jsx` or use the React component directly.
-
-**Q: Can I deploy this to the cloud?**
-A: Yes! See deployment options above. Heroku is easiest for quick deployment.
-
-**Q: How accurate is the detection?**
-A: Accuracy depends on training data. Current model is trained on standard datasets.
-
-**Q: Can I analyze live traffic?**
-A: Currently PCAP files only. For live traffic, modify to use Scapy's `sniff()` function.
-
----
-
 ## 📜 License
 
 Network security analysis tool. Use responsibly for authorized testing only.
@@ -567,10 +243,7 @@ Network security analysis tool. Use responsibly for authorized testing only.
 
 ## ✨ Features Summary
 
-✅ Flask REST API  
-✅ Web UI (no dependencies)  
-✅ React component  
-✅ Next.js compatible  
+✅ Flask REST API    
 ✅ ML-powered detection  
 ✅ PCAP analysis  
 ✅ Real-time results  
@@ -588,7 +261,5 @@ Network security analysis tool. Use responsibly for authorized testing only.
 4. Analyze network traffic!
 
 **Happy analyzing!** 🛡️🚀
-
 ---
-
 **Created with ❤️ for network security professionals and learners.**
