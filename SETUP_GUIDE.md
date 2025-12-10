@@ -29,29 +29,10 @@ test_frontend.html
 ### Step 3: Upload & Analyze
 1. Click "📁 Choose PCAP File"
 2. Select a PCAP file:
-   - `2024-07-30-traffic-analysis-exercise.pcap` (original)
-   - `realistic_mixed_attacks.pcap` (with attacks)
-   - `attack_samples/arp_attack.pcap` (downloaded sample)
 3. Click "🔍 Analyze Network Traffic"
 4. View results in real-time!
 
 ---
-
-## 📁 Project Files
-
-### Core Files
-- **`api.py`** - Flask REST API backend
-- **`test_frontend.html`** - Beautiful web interface (no installation needed!)
-- **`lightgbm_model.pkl`** - ML model (already loaded)
-
-### Test/Analysis Files
-- **`test_pcap.py`** - Command-line PCAP analyzer
-- **`test_api.py`** - API endpoint tester
-- **`test_arp_attack.py`** - Test ARP attack analysis
-
-### Frontend Examples
-- **`frontend_examples/AnalyzePackets.jsx`** - React component
-- **`frontend_examples/nextjs_example.js`** - Next.js page
 
 ### Documentation
 - **`API_README.md`** - Full API documentation
@@ -85,62 +66,6 @@ curl -X POST -F "file=@traffic.pcap" http://localhost:5000/analyze-quick
 
 # Get stats
 curl http://localhost:5000/stats
-```
-
----
-
-## 💻 Integration with Frontend Frameworks
-
-### React Integration
-
-```javascript
-import axios from 'axios';
-
-async function analyzeTraffic(file) {
-  const formData = new FormData();
-  formData.append('file', file);
-  
-  const response = await axios.post(
-    'http://localhost:5000/analyze-quick',
-    formData
-  );
-  
-  return response.data;
-}
-```
-
-**Full React component:** See `frontend_examples/AnalyzePackets.jsx`
-
-### Next.js Integration
-
-```javascript
-export default async function handler(req, res) {
-  const formData = new FormData();
-  const response = await fetch('http://localhost:5000/analyze-quick', {
-    method: 'POST',
-    body: req.body,
-  });
-  
-  return await response.json();
-}
-```
-
-**Full Next.js page:** See `frontend_examples/nextjs_example.js`
-
-### Vue.js Integration
-
-```javascript
-export async function analyzeFile(file) {
-  const formData = new FormData();
-  formData.append('file', file);
-  
-  const response = await fetch('http://localhost:5000/analyze-quick', {
-    method: 'POST',
-    body: formData
-  });
-  
-  return await response.json();
-}
 ```
 
 ---
@@ -246,30 +171,6 @@ pwd
 
 ---
 
-## 📈 Next Steps
-
-### To Deploy to Production:
-1. Install a production WSGI server:
-   ```bash
-   pip install gunicorn
-   gunicorn api:app
-   ```
-
-2. Set up with Nginx reverse proxy
-
-3. Add authentication:
-   ```python
-   from flask_httpauth import HTTPBasicAuth
-   auth = HTTPBasicAuth()
-   ```
-
-4. Enable HTTPS with SSL certificates
-
-### To Build a Full Web App:
-1. Use the React component in `frontend_examples/AnalyzePackets.jsx`
-2. Deploy with Vercel (Next.js) or Netlify (React)
-3. Use Docker for containerization
-
 ### To Train Better Models:
 1. Download datasets from:
    - CICIDS2017
@@ -330,9 +231,6 @@ Optional files:
 You have a complete, working network security analysis system:
 
 ✅ **Backend API** - Flask REST API  
-✅ **Web Interface** - HTML/JavaScript (no dependencies)  
-✅ **React Component** - Ready to use  
-✅ **Next.js Example** - For modern frameworks  
 ✅ **Documentation** - Complete API docs  
 ✅ **Test Files** - Command-line & web testing  
 ✅ **ML Model** - Pre-trained LightGBM  
@@ -341,8 +239,6 @@ You have a complete, working network security analysis system:
 1. Start the API: `python api.py`
 2. Open the web UI: `test_frontend.html`
 3. Upload PCAP files and analyze them
-4. Integrate with React/Next.js/Vue frameworks
-5. Deploy to any cloud platform
 
 **The system is production-ready and can be deployed immediately!** 🚀
 
@@ -354,5 +250,6 @@ You have a complete, working network security analysis system:
 - API best practices: https://restfulapi.net/
 - PCAP analysis: https://www.wireshark.org/
 - ML deployment: https://scikit-learn.org/stable/
+
 
 Enjoy your CyberPulse-Sniffer! 🛡️
