@@ -1,153 +1,180 @@
-"""FastAPI inference service for the CICIDS2017 intrusion-detection models.
-
-The service loads a trained tree-based classifier (default: XGBoost) and exposes
-HTTP endpoints that are friendly to Next.js/React frontends. Clients send one or
-more network-flow feature dictionaries and receive predicted labels plus class
-probabilities.
-"""
-
-from pathlib import Path
-from typing import Dict, List, Optional
-
-import os
-
-import joblib
+import tkinter as tk
+from tkinter import ttk, filedialog, messagebox, simpledialog
 import numpy as np
-import pandas as pd
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
+import joblib
+import warnings
+import threading
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from scapy.all import sniff, rdpcap, IP, TCP, UDP, ICMP, get_if_list, conf
 
+# Suppress warnings
+warnings.filterwarnings("ignore")
 
-BASE_DIR = Path(__file__).resolve().parent
-ENV_MODEL_PATH = os.getenv("MODEL_PATH")
-DEFAULT_MODEL_PATH = Path(ENV_MODEL_PATH).expanduser() if ENV_MODEL_PATH else BASE_DIR / "model" / "xgboost.pkl"
-FEATURE_LIST_PATH = BASE_DIR / "results" / "selected_features.csv"
+# Load the trained LightGBM model
+try:
+    model = joblib.load("lightgbm_model.pkl")
+except FileNotFoundError:
+    messagebox.showerror("Error", "Model file 'lightgbm_model.pkl' not found. Please check the file path.")
+    exit()
 
-# Label names in the order produced by LabelEncoder (alphabetical on the raw labels)
-CLASS_NAMES = [
-    "BENIGN",
-    "Botnet",
-    "Botnet - Attempted",
-    "DDoS",
-    "DoS GoldenEye",
-    "DoS GoldenEye - Attempted",
-    "DoS Hulk",
-    "DoS Hulk - Attempted",
-    "DoS Slowhttptest",
-    "DoS Slowhttptest - Attempted",
-    "DoS Slowloris",
-    "DoS Slowloris - Attempted",
-    "FTP-Patator",
-    "FTP-Patator - Attempted",
-    "Heartbleed",
-    "Infiltration",
-    "Infiltration - Attempted",
-    "Infiltration - Portscan",
-    "Portscan",
-    "SSH-Patator",
-    "SSH-Patator - Attempted",
-    "Web Attack - Brute Force",
-    "Web Attack - Brute Force - Attempted",
-    "Web Attack - SQL Injection",
-    "Web Attack - SQL Injection - Attempted",
-    "Web Attack - XSS",
-    "Web Attack - XSS - Attempted",
-]
+# GUI setup
+root = tk.Tk()
+root.title("CyberShield AI - Wi-Fi Network Monitoring")
+root.geometry("900x600")
+root.configure(bg="#1e1e1e")
 
+# Title Label
+title_label = tk.Label(root, text="CyberShield AI - Wi-Fi Network Monitoring", font=("Helvetica", 16, "bold"), bg="#1e1e1e", fg="white")
+title_label.pack(pady=10)
 
-def load_selected_features(path: Path) -> List[str]:
-    if not path.exists():
-        raise FileNotFoundError(f"Selected feature list missing at {path}")
-    df = pd.read_csv(path)
-    if "TopFeatures" not in df.columns:
-        raise ValueError("selected_features.csv must contain a 'TopFeatures' column")
-    return df["TopFeatures"].tolist()
+# Packet List Display with Scrollbar
+frame = tk.Frame(root)
+frame.pack(pady=10, fill="both", expand=True)
 
+packet_list = ttk.Treeview(frame, columns=("Packet Summary", "Prediction", "Confidence"), show="headings", height=10)
+packet_list.heading("Packet Summary", text="Packet Summary")
+packet_list.heading("Prediction", text="Prediction")
+packet_list.heading("Confidence", text="Confidence (%)")
 
-def load_model(path: Path):
-    if not path.exists():
-        raise FileNotFoundError(f"Model file not found at {path}")
-    return joblib.load(path)
+scrollbar = ttk.Scrollbar(frame, orient="vertical", command=packet_list.yview)
+packet_list.configure(yscrollcommand=scrollbar.set)
+packet_list.pack(side="left", fill="both", expand=True)
+scrollbar.pack(side="right", fill="y")
 
+# Identify Wi-Fi interface with manual selection fallback
+def get_wifi_interface():
+    interfaces = get_if_list()
+    wifi_interfaces = [iface for iface in interfaces if "wlan" in iface.lower() or "wifi" in iface.lower() or "wlp" in iface.lower()]
 
-SELECTED_FEATURES = load_selected_features(FEATURE_LIST_PATH)
-MODEL = load_model(DEFAULT_MODEL_PATH)
+    if not wifi_interfaces:
+        # Ask user to manually enter interface if none detected
+        manual_iface = simpledialog.askstring("Manual Input", "No Wi-Fi interface detected.\nEnter interface name manually:")
+        return manual_iface if manual_iface else None
 
+    return wifi_interfaces[0]
 
-class PredictRequest(BaseModel):
-    records: List[Dict[str, float]] = Field(..., description="List of feature dictionaries keyed by column name")
+wifi_iface = get_wifi_interface()
 
+if not wifi_iface:
+    messagebox.showerror("Error", "No valid Wi-Fi interface provided. Exiting...")
+    root.destroy()
 
-class PredictResponse(BaseModel):
-    model: str
-    predictions: List[str]
-    class_probabilities: Optional[List[Dict[str, float]]] = None
+# Feature Extraction
+def extract_features(packet):
+    """ Extract features from a packet to create a 78-feature vector. """
+    features = np.zeros(78)
+    features[0] = len(packet)
 
+    if IP in packet:
+        features[1] = packet[IP].proto
+        features[2] = packet[IP].ttl
 
-app = FastAPI(
-    title="CICIDS2017 Intrusion Detection API",
-    version="1.0.0",
-    description="Lightweight inference service for the pre-trained CICIDS2017 models",
-)
+    if TCP in packet:
+        features[3] = packet[TCP].sport
+        features[4] = packet[TCP].dport
+    elif UDP in packet:
+        features[3] = packet[UDP].sport
+        features[4] = packet[UDP].dport
 
+    if ICMP in packet:
+        features[5] = 1
 
-def _build_frame(records: List[Dict[str, float]]) -> pd.DataFrame:
-    rows = []
-    for record in records:
-        row = [float(record.get(col, 0.0)) for col in SELECTED_FEATURES]
-        rows.append(row)
-    return pd.DataFrame(rows, columns=SELECTED_FEATURES)
+    return features.reshape(1, -1)
 
+# Matplotlib Figure for Confidence Graph
+fig, ax = plt.subplots(figsize=(4, 2))
+ax.set_title("Prediction Confidence")
+ax.set_ylim([0, 100])
+ax.set_ylabel("Confidence (%)")
+ax.set_xticks([])
+bar = ax.bar([""], [0], color="lime")
 
-def _map_label(class_id: int) -> str:
-    if 0 <= class_id < len(CLASS_NAMES):
-        return CLASS_NAMES[class_id]
-    return str(class_id)
+canvas = FigureCanvasTkAgg(fig, master=root)
+canvas.get_tk_widget().pack(pady=10)
 
+# Process Incoming Packet
+packet_data = []
 
-@app.get("/health")
-def health_check() -> Dict[str, str]:
-    return {"status": "ok", "model": DEFAULT_MODEL_PATH.name}
-
-
-@app.get("/metadata")
-def metadata() -> Dict[str, object]:
-    return {
-        "model_file": str(DEFAULT_MODEL_PATH.name),
-        "num_features": len(SELECTED_FEATURES),
-        "features": SELECTED_FEATURES,
-        "class_labels": CLASS_NAMES,
-        "predict_proba": hasattr(MODEL, "predict_proba"),
-    }
-
-
-@app.post("/predict", response_model=PredictResponse)
-def predict(payload: PredictRequest) -> PredictResponse:
-    if not payload.records:
-        raise HTTPException(status_code=400, detail="records must not be empty")
-
-    frame = _build_frame(payload.records)
+def process_packet(packet):
     try:
-        class_ids = MODEL.predict(frame)
-    except Exception as exc:  # pragma: no cover - defensive guard
-        raise HTTPException(status_code=500, detail=f"Model inference failed: {exc}")
+        features = extract_features(packet)
+        probabilities = model.predict_proba(features)[0]
+        prediction = np.argmax(probabilities)
+        confidence = probabilities[prediction] * 100
 
-    predictions = [_map_label(int(cid)) for cid in class_ids]
+        # Attack types for display
+        attack_types = {0: "Normal", 1: "DDoS", 2: "Port Scan", 3: "SQL Injection", 4: "Malware"}
+        prediction_label = attack_types.get(prediction, "Unknown")
 
-    class_probabilities: Optional[List[Dict[str, float]]] = None
-    if hasattr(MODEL, "predict_proba"):
-        probs = MODEL.predict_proba(frame)
-        class_probabilities = []
-        for row in probs:
-            class_probabilities.append({CLASS_NAMES[i]: float(p) for i, p in enumerate(row) if i < len(CLASS_NAMES)})
+        # Store packet data
+        packet_info = (packet.summary(), prediction_label, confidence)
+        packet_data.append(packet_info)
 
-    return PredictResponse(
-        model=DEFAULT_MODEL_PATH.name,
-        predictions=predictions,
-        class_probabilities=class_probabilities,
-    )
+        # Update GUI safely
+        root.after(0, lambda: update_gui(packet_info))
 
+        # Update confidence graph
+        bar[0].set_height(confidence)
+        bar[0].set_color("red" if confidence > 80 else "orange" if confidence > 50 else "lime")
+        canvas.draw()
 
-@app.get("/")
-def root() -> Dict[str, str]:
-    return {"message": "CICIDS2017 intrusion-detection backend is running", "docs": "/docs"}
+    except Exception as e:
+        print(f"Error processing packet: {e}")
+
+def update_gui(packet_info):
+    """ Thread-safe method to update the GUI with new packet data """
+    summary, prediction, confidence = packet_info
+    packet_list.insert("", "end", values=(summary, prediction, f"{confidence:.2f}"))
+    packet_list.yview_moveto(1.0)
+
+# Sniffing Control
+sniffing = False
+
+def start_sniffing():
+    global sniffing
+    if not wifi_iface:
+        messagebox.showerror("Error", "No Wi-Fi interface detected. Please connect to a Wi-Fi network.")
+        return
+
+    sniffing = True
+    messagebox.showinfo("Packet Sniffing", f"Started sniffing on Wi-Fi interface: {wifi_iface}")
+
+    def sniff_packets():
+        try:
+            sniff(iface=wifi_iface, prn=process_packet, store=False, stop_filter=lambda x: not sniffing)
+        except Exception as e:
+            messagebox.showerror("Sniffing Error", f"Error while sniffing: {e}")
+
+    sniff_thread = threading.Thread(target=sniff_packets, daemon=True)
+    sniff_thread.start()
+
+def stop_sniffing():
+    global sniffing
+    sniffing = False
+    messagebox.showinfo("Packet Sniffing", "Stopped sniffing network packets.")
+
+# PCAP File Analysis
+def analyze_pcap():
+    file_path = filedialog.askopenfilename(filetypes=[("PCAP Files", "*.pcap")])
+    if file_path:
+        packets = rdpcap(file_path)
+        for packet in packets:
+            process_packet(packet)
+        messagebox.showinfo("PCAP Analysis", f"Analyzed {len(packets)} packets from {file_path}")
+
+# Buttons
+button_frame = tk.Frame(root, bg="#1e1e1e")
+button_frame.pack(pady=10)
+
+start_button = tk.Button(button_frame, text="Start Sniffin/g", bg="lime", command=start_sniffing)
+start_button.grid(row=0, column=0, padx=10)
+
+stop_button = tk.Button(button_frame, text="Stop Sniffing", bg="red", command=stop_sniffing)
+stop_button.grid(row=0, column=1, padx=10)
+
+pcap_button = tk.Button(button_frame, text="Analyze PCAP", bg="blue", command=analyze_pcap)
+pcap_button.grid(row=0, column=2, padx=10)
+
+# Run GUI
+root.mainloop()
